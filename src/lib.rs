@@ -1,8 +1,10 @@
+#![doc = include_str!("../README.md")]
+
 use core::fmt;
 use core::{
     cell::{Cell, UnsafeCell},
     cmp::Ordering,
-    fmt::Display,
+    fmt::{Debug, Display, Formatter},
     marker::PhantomData,
     mem,
     ops::{Deref, DerefMut},
@@ -13,7 +15,7 @@ use core::{
 ///
 /// `UncheckedRefCell` behaves exactly like `std::cell::RefCell` when `debug_assertions` is enabled or `checked` feature
 /// flag is enabled (for non-release-like builds). For release-like builds, `UncheckedRefCell` does not
-/// perform any borrow checking. Thus it is faster than `RefCell` (see benchmarks), but may lead to 
+/// perform any borrow checking. Thus it is faster than `RefCell` (see benchmarks), but may lead to
 /// undefined behavior instead of panicking like `RefCell`. Use this over `RefCell` for performance
 /// critical code where it is known a `RefCell` would never panic.
 pub struct UncheckedRefCell<T: ?Sized> {
@@ -124,9 +126,9 @@ impl<T> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     /// ```
     #[inline]
     pub const fn new(value: T) -> UncheckedRefCell<T> {
@@ -145,9 +147,9 @@ impl<T> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// let five = c.into_inner();
     /// ```
@@ -170,11 +172,11 @@ impl<T> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
-    /// let cell = RefCell::new(5);
+    /// use unchecked_refcell::UncheckedRefCell;
+    /// let cell = UncheckedRefCell::new(5);
     /// let old_value = cell.replace(6);
     /// assert_eq!(old_value, 5);
-    /// assert_eq!(cell, RefCell::new(6));
+    /// assert_eq!(cell, UncheckedRefCell::new(6));
     /// ```
     #[track_caller]
     pub fn replace(&self, t: T) -> T {
@@ -191,11 +193,11 @@ impl<T> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
-    /// let cell = RefCell::new(5);
+    /// use unchecked_refcell::UncheckedRefCell;
+    /// let cell = UncheckedRefCell::new(5);
     /// let old_value = cell.replace_with(|&mut old| old + 1);
     /// assert_eq!(old_value, 5);
-    /// assert_eq!(cell, RefCell::new(6));
+    /// assert_eq!(cell, UncheckedRefCell::new(6));
     /// ```
     #[inline]
     #[track_caller]
@@ -218,12 +220,12 @@ impl<T> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
-    /// let c = RefCell::new(5);
-    /// let d = RefCell::new(6);
+    /// use unchecked_refcell::UncheckedRefCell;
+    /// let c = UncheckedRefCell::new(5);
+    /// let d = UncheckedRefCell::new(6);
     /// c.swap(&d);
-    /// assert_eq!(c, RefCell::new(6));
-    /// assert_eq!(d, RefCell::new(5));
+    /// assert_eq!(c, UncheckedRefCell::new(6));
+    /// assert_eq!(d, UncheckedRefCell::new(5));
     /// ```
     #[inline]
     pub fn swap(&self, other: &Self) {
@@ -245,9 +247,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// let borrowed_five = c.borrow();
     /// let borrowed_five2 = c.borrow();
@@ -256,9 +258,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// An example of panic:
     ///
     /// ```should_panic
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// let m = c.borrow_mut();
     /// let b = c.borrow(); // this causes a panic
@@ -283,9 +285,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// {
     ///     let m = c.borrow_mut();
@@ -340,9 +342,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new("hello".to_owned());
+    /// let c = UncheckedRefCell::new("hello".to_owned());
     ///
     /// *c.borrow_mut() = "bonjour".to_owned();
     ///
@@ -352,9 +354,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// An example of panic:
     ///
     /// ```should_panic
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     /// let m = c.borrow();
     ///
     /// let b = c.borrow_mut(); // this causes a panic
@@ -379,9 +381,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// {
     ///     let m = c.borrow();
@@ -434,9 +436,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// let ptr = c.as_ptr();
     /// ```
@@ -462,19 +464,19 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// In most situations where `RefCell` is used, it can't be borrowed mutably.
     /// Use [`borrow_mut`] to get mutable access to the underlying data then.
     ///
-    /// [`borrow_mut`]: RefCell::borrow_mut()
+    /// [`borrow_mut`]: UncheckedRefCell::borrow_mut()
     /// [`forget()`]: mem::forget
-    /// [`undo_leak`]: RefCell::undo_leak()
+    /// [`undo_leak`]: UncheckedRefCell::undo_leak()
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let mut c = RefCell::new(5);
+    /// let mut c = UncheckedRefCell::new(5);
     /// *c.get_mut() += 1;
     ///
-    /// assert_eq!(c, RefCell::new(6));
+    /// assert_eq!(c, UncheckedRefCell::new(6));
     /// ```
     #[inline]
     pub const fn get_mut(&mut self) -> &mut T {
@@ -487,15 +489,15 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// ensure no borrows exist and then resets the state tracking shared borrows. This is relevant
     /// if some `Ref` or `RefMut` borrows have been leaked.
     ///
-    /// [`get_mut`]: RefCell::get_mut()
+    /// [`get_mut`]: UncheckedRefCell::get_mut()
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let mut c = RefCell::new(0);
+    /// let mut c = UncheckedRefCell::new(0);
     /// std::mem::forget(c.borrow_mut());
     ///
     /// assert!(c.try_borrow().is_err());
@@ -523,9 +525,9 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     ///
     /// {
     ///     let m = c.borrow_mut();
@@ -572,9 +574,9 @@ impl<T: Default> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::RefCell;
+    /// use unchecked_refcell::UncheckedRefCell;
     ///
-    /// let c = RefCell::new(5);
+    /// let c = UncheckedRefCell::new(5);
     /// let five = c.take();
     ///
     /// assert_eq!(five, 5);
@@ -798,9 +800,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, Ref};
     ///
-    /// let c = RefCell::new((5, 'b'));
+    /// let c = UncheckedRefCell::new((5, 'b'));
     /// let b1: Ref<'_, (u32, char)> = c.borrow();
     /// let b2: Ref<'_, u32> = Ref::map(b1, |t| &t.0);
     /// assert_eq!(*b2, 5)
@@ -832,9 +834,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, Ref};
     ///
-    /// let c = RefCell::new(vec![1, 2, 3]);
+    /// let c = UncheckedRefCell::new(vec![1, 2, 3]);
     /// let b1: Ref<'_, Vec<u32>> = c.borrow();
     /// let b2: Result<Ref<'_, u32>, _> = Ref::filter_map(b1, |v| v.get(1));
     /// assert_eq!(*b2.unwrap(), 2);
@@ -870,15 +872,15 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// ```
     /// #![feature(refcell_try_map)]
-    /// use std::cell::{RefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, Ref};
     /// use std::str::{from_utf8, Utf8Error};
     ///
-    /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6 ,0x80]);
+    /// let c = UncheckedRefCell::new(vec![0xF0, 0x9F, 0xA6 ,0x80]);
     /// let b1: Ref<'_, Vec<u8>> = c.borrow();
     /// let b2: Result<Ref<'_, str>, _> = Ref::try_map(b1, |v| from_utf8(v));
     /// assert_eq!(&*b2.unwrap(), "🦀");
     ///
-    /// let c = RefCell::new(vec![0xF0, 0x9F, 0xA6]);
+    /// let c = UncheckedRefCell::new(vec![0xF0, 0x9F, 0xA6]);
     /// let b1: Ref<'_, Vec<u8>> = c.borrow();
     /// let b2: Result<_, (Ref<'_, Vec<u8>>, Utf8Error)> = Ref::try_map(b1, |v| from_utf8(v));
     /// let (b3, e) = b2.unwrap_err();
@@ -914,14 +916,14 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{Ref, RefCell};
+    /// use unchecked_refcell::{UncheckedRefCell, Ref};
     ///
-    /// let cell = RefCell::new([1, 2, 3, 4]);
+    /// let cell = UncheckedRefCell::new([1, 2, 3, 4]);
     /// let borrow = cell.borrow();
     /// let (begin, end) = Ref::map_split(borrow, |slice| slice.split_at(2));
     /// assert_eq!(*begin, [1, 2]);
     /// assert_eq!(*end, [3, 4]);
-    /// ```+>
+    /// ```
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>)
     where
@@ -963,8 +965,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::{RefCell, Ref};
-    /// let cell = RefCell::new(0);
+    /// use unchecked_refcell::{UncheckedRefCell, Ref};
+    /// let cell = UncheckedRefCell::new(0);
     ///
     /// let value = Ref::leak(cell.borrow());
     /// assert_eq!(*value, 0);
@@ -1003,9 +1005,9 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
     ///
-    /// let c = RefCell::new((5, 'b'));
+    /// let c = UncheckedRefCell::new((5, 'b'));
     /// {
     ///     let b1: RefMut<'_, (u32, char)> = c.borrow_mut();
     ///     let mut b2: RefMut<'_, u32> = RefMut::map(b1, |t| &mut t.0);
@@ -1041,9 +1043,9 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
     ///
-    /// let c = RefCell::new(vec![1, 2, 3]);
+    /// let c = UncheckedRefCell::new(vec![1, 2, 3]);
     ///
     /// {
     ///     let b1: RefMut<'_, Vec<u32>> = c.borrow_mut();
@@ -1090,10 +1092,10 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// ```
     /// #![feature(refcell_try_map)]
-    /// use std::cell::{RefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
     /// use std::str::{from_utf8_mut, Utf8Error};
     ///
-    /// let c = RefCell::new(vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]);
+    /// let c = UncheckedRefCell::new(vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]);
     /// {
     ///     let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
     ///     let b2: Result<RefMut<'_, str>, _> = RefMut::try_map(b1, |v| from_utf8_mut(v));
@@ -1103,7 +1105,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// }
     /// assert_eq!(*c.borrow(), "HELLO".as_bytes());
     ///
-    /// let c = RefCell::new(vec![0xFF]);
+    /// let c = UncheckedRefCell::new(vec![0xFF]);
     /// let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
     /// let b2: Result<_, (RefMut<'_, Vec<u8>>, Utf8Error)> = RefMut::try_map(b1, |v| from_utf8_mut(v));
     /// let (b3, e) = b2.unwrap_err();
@@ -1145,9 +1147,9 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// use std::cell::{RefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
     ///
-    /// let cell = RefCell::new([1, 2, 3, 4]);
+    /// let cell = UncheckedRefCell::new([1, 2, 3, 4]);
     /// let borrow = cell.borrow_mut();
     /// let (mut begin, mut end) = RefMut::map_split(borrow, |slice| slice.split_at_mut(2));
     /// assert_eq!(*begin, [1, 2]);
@@ -1195,8 +1197,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// ```
     /// #![feature(cell_leak)]
-    /// use std::cell::{RefCell, RefMut};
-    /// let cell = RefCell::new(0);
+    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
+    /// let cell = UncheckedRefCell::new(0);
     ///
     /// let value = RefMut::leak(cell.borrow_mut());
     /// assert_eq!(*value, 0);
@@ -1298,5 +1300,30 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
+    }
+}
+
+//************************************************************************//
+
+impl<T: ?Sized + Debug> Debug for UncheckedRefCell<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut d = f.debug_struct("RefCell");
+        match self.try_borrow() {
+            Ok(borrow) => d.field("value", &borrow),
+            Err(_) => d.field("value", &format_args!("<borrowed>")),
+        };
+        d.finish()
+    }
+}
+
+impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&**self, f)
+    }
+}
+
+impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&*(self.deref()), f)
     }
 }
