@@ -74,8 +74,19 @@ fn double_borrow_single_release_no_borrow_mut() {
     assert!(x.try_borrow_mut().is_err());
 }
 
+#[cfg(debug_assertions)]
 #[test]
 #[should_panic]
+fn discard_doesnt_unborrow_debug() {
+    discard_doesnt_unborrow();
+}
+
+#[cfg(not(debug_assertions))]
+#[test]
+fn discard_doesnt_unborrow_release() {
+    discard_doesnt_unborrow();
+}
+
 fn discard_doesnt_unborrow() {
     let x = UncheckedRefCell::new(0);
     let _b = x.borrow();
@@ -269,8 +280,19 @@ fn refcell_default() {
 //     }
 // }
 
+#[cfg(debug_assertions)]
 #[test]
 #[should_panic]
+fn refcell_swap_borrows_debug() {
+    refcell_swap_borrows();
+}
+
+#[cfg(not(debug_assertions))]
+#[test]
+fn refcell_swap_borrows_release() {
+    refcell_swap_borrows();
+}
+
 fn refcell_swap_borrows() {
     let x = UncheckedRefCell::new(0);
     let _b = x.borrow();
@@ -278,8 +300,19 @@ fn refcell_swap_borrows() {
     x.swap(&y);
 }
 
+#[cfg(debug_assertions)]
 #[test]
 #[should_panic]
+fn refcell_replace_borrows_debug() {
+    refcell_replace_borrows();
+}
+
+#[cfg(not(debug_assertions))]
+#[test]
+fn refcell_replace_borrows_release() {
+    refcell_replace_borrows();
+}
+
 fn refcell_replace_borrows() {
     let x = UncheckedRefCell::new(0);
     let _b = x.borrow();
@@ -387,22 +420,3 @@ fn refcell_format() {
 //         forget((c, d));
 //     };
 // }
-
-//************************************************************************//
-
-#[cfg(debug_assertions)]
-#[test]
-#[should_panic]
-fn panics_in_debug() {
-    let x = UncheckedRefCell::new(0);
-    let _b1 = x.borrow();
-    let _b2 = x.borrow_mut();
-}
-
-#[cfg(not(debug_assertions))]
-#[test]
-fn does_not_panics_in_release() {
-    let x = UncheckedRefCell::new(0);
-    let _b1 = x.borrow();
-    let _b2 = x.borrow_mut();
-}
