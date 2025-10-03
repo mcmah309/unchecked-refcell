@@ -23,7 +23,7 @@ It provides all the same APIs as `RefCell`, including:
 Benchmarks comparing `UncheckedRefCell` with `std::cell::RefCell` (release build):
 
 ```console
-std_refcell_borrow:   [2.1578 ms 2.1597 ms 2.1618 ms]
+std_refcell_borrow:   [2.5263 ms 2.5345 ms 2.5427 ms]
 
 std_refcell_borrow_mut:   [2.9351 ms 2.9377 ms 2.9406 ms]
 
