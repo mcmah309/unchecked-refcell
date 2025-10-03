@@ -1,12 +1,18 @@
 [package]
-name = "unchecked_ref_cell"
+name = "unchecked-refcell"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 
+[dev-dependencies]
+criterion = "0.4"
 
 [features]
 default = []
 debug_refcell = []
 checked = ["debug_refcell"]
+
+[[bench]]
+name = "bench"
+harness = false
