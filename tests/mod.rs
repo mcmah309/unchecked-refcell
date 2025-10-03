@@ -24,25 +24,53 @@ fn double_imm_borrow() {
 }
 
 #[test]
-fn no_mut_then_imm_borrow() {
+#[cfg(debug_assertions)]
+fn no_mut_then_imm_borrow_debug() {
     let x = UncheckedRefCell::new(0);
     let _b1 = x.borrow_mut();
     assert!(x.try_borrow().is_err());
 }
 
 #[test]
-fn no_imm_then_borrow_mut() {
+#[cfg(not(debug_assertions))]
+fn no_mut_then_imm_borrow_release() {
+    let x = UncheckedRefCell::new(0);
+    let _b1 = x.borrow_mut();
+    assert!(x.try_borrow().is_ok()); // no checks so we expect okay, but UB
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn no_imm_then_borrow_mut_debug() {
     let x = UncheckedRefCell::new(0);
     let _b1 = x.borrow();
     assert!(x.try_borrow_mut().is_err());
 }
 
 #[test]
-fn no_double_borrow_mut() {
+#[cfg(not(debug_assertions))]
+fn no_imm_then_borrow_mut_release() {
+    let x = UncheckedRefCell::new(0);
+    let _b1 = x.borrow();
+    assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn no_double_borrow_mut_debug() {
     let x = UncheckedRefCell::new(0);
     assert!(x.try_borrow().is_ok());
     let _b1 = x.borrow_mut();
     assert!(x.try_borrow().is_err());
+}
+
+#[test]
+#[cfg(not(debug_assertions))]
+fn no_double_borrow_mut_release() {
+    let x = UncheckedRefCell::new(0);
+    assert!(x.try_borrow().is_ok());
+    let _b1 = x.borrow_mut();
+    assert!(x.try_borrow().is_ok()); // no checks so we expect okay, but UB
 }
 
 #[test]
@@ -64,7 +92,9 @@ fn mut_release_borrow_mut() {
 }
 
 #[test]
-fn double_borrow_single_release_no_borrow_mut() {
+#[cfg(debug_assertions)]
+
+fn double_borrow_single_release_no_borrow_mut_debug() {
     let x = UncheckedRefCell::new(0);
     let _b1 = x.borrow();
     {
@@ -72,6 +102,19 @@ fn double_borrow_single_release_no_borrow_mut() {
     }
     assert!(x.try_borrow().is_ok());
     assert!(x.try_borrow_mut().is_err());
+}
+
+#[test]
+#[cfg(not(debug_assertions))]
+
+fn double_borrow_single_release_borrow_mut_release() {
+    let x = UncheckedRefCell::new(0);
+    let _b1 = x.borrow();
+    {
+        let _b2 = x.borrow();
+    }
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
 }
 
 #[cfg(debug_assertions)]
@@ -95,7 +138,8 @@ fn discard_doesnt_unborrow() {
 }
 
 #[test]
-fn ref_clone_updates_flag() {
+#[cfg(debug_assertions)]
+fn ref_clone_updates_flag_debug() {
     let x = UncheckedRefCell::new(0);
     {
         let b1 = x.borrow();
@@ -114,7 +158,28 @@ fn ref_clone_updates_flag() {
 }
 
 #[test]
-fn ref_map_does_not_update_flag() {
+#[cfg(not(debug_assertions))]
+fn ref_clone_updates_flag_release() {
+    let x = UncheckedRefCell::new(0);
+    {
+        let b1 = x.borrow();
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        {
+            let _b2 = UncheckedRef::clone(&b1);
+            assert!(x.try_borrow().is_ok());
+            assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        }
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+    }
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok());
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn ref_map_does_not_update_flag_debug() {
     let x = UncheckedRefCell::new(Some(5));
     {
         let b1: UncheckedRef<'_, Option<u32>> = x.borrow();
@@ -134,7 +199,29 @@ fn ref_map_does_not_update_flag() {
 }
 
 #[test]
-fn ref_map_split_updates_flag() {
+#[cfg(not(debug_assertions))]
+fn ref_map_does_not_update_flag_release() {
+    let x = UncheckedRefCell::new(Some(5));
+    {
+        let b1: UncheckedRef<'_, Option<u32>> = x.borrow();
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        {
+            let b2: UncheckedRef<'_, u32> = UncheckedRef::map(b1, |o| o.as_ref().unwrap());
+            assert_eq!(*b2, 5);
+            assert!(x.try_borrow().is_ok());
+            assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        }
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok());
+    }
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok());
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn ref_map_split_updates_flag_debug() {
     let x = UncheckedRefCell::new([1, 2]);
     {
         let b1 = x.borrow();
@@ -162,6 +249,44 @@ fn ref_map_split_updates_flag() {
             drop(_b2);
             assert!(x.try_borrow().is_err());
             assert!(x.try_borrow_mut().is_err());
+        }
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok());
+    }
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok());
+}
+
+#[test]
+#[cfg(not(debug_assertions))]
+fn ref_map_split_updates_flag_release() {
+    let x = UncheckedRefCell::new([1, 2]);
+    {
+        let b1 = x.borrow();
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        {
+            let (_b2, _b3) = UncheckedRef::map_split(b1, |slc| slc.split_at(1));
+            assert!(x.try_borrow().is_ok());
+            assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        }
+        assert!(x.try_borrow().is_ok());
+        assert!(x.try_borrow_mut().is_ok());
+    }
+    assert!(x.try_borrow().is_ok());
+    assert!(x.try_borrow_mut().is_ok());
+
+    {
+        let b1 = x.borrow_mut();
+        assert!(x.try_borrow().is_ok()); // no checks so we expect okay, but UB
+        assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+        {
+            let (_b2, _b3) = UncheckedRefMut::map_split(b1, |slc| slc.split_at_mut(1));
+            assert!(x.try_borrow().is_ok()); // no checks so we expect okay, but UB
+            assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
+            drop(_b2);
+            assert!(x.try_borrow().is_ok()); // no checks so we expect okay, but UB
+            assert!(x.try_borrow_mut().is_ok()); // no checks so we expect okay, but UB
         }
         assert!(x.try_borrow().is_ok());
         assert!(x.try_borrow_mut().is_ok());
