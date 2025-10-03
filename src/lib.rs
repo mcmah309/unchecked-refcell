@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{
+use core::{
     cell::{Cell, UnsafeCell},
     cmp::Ordering,
     fmt::Display,

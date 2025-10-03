@@ -1,6 +1,8 @@
 [package]
 name = "unchecked-refcell"
+description = "A drop-in alternative to RefCell for performance-critical code where it is certain no borrowing rules are violated."
 version = "0.1.0"
+license = "Apache-2.0"
 edition = "2024"
 
 [dependencies]
