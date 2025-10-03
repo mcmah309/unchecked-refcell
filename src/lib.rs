@@ -9,9 +9,13 @@ use std::{
     ptr::NonNull,
 };
 
-/// A mutable memory location with dynamically checked borrow rules
+/// A mutable memory location with dynamically checked borrow rules.
 ///
-/// See the [module-level documentation](self) for more.
+/// `UncheckedRefCell` behaves exactly like `std::cell::RefCell` when `debug_assertions` is enabled or `checked` feature
+/// flag is enabled (for non-release-like builds). For release-like builds, `UncheckedRefCell` does not
+/// perform any borrow checking. Thus it is faster than `RefCell` (see benchmarks), but may lead to 
+/// undefined behavior instead of panicking like `RefCell`. Use this over `RefCell` for performance
+/// critical code where it is known a `RefCell` would never panic.
 pub struct UncheckedRefCell<T: ?Sized> {
     #[cfg(any(feature = "checked", debug_assertions))]
     borrow: Cell<BorrowCounter>,
