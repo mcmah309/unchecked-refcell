@@ -7,5 +7,6 @@ edition = "2024"
 
 
 [features]
-default = ["debug_refcell"]
+default = ["checked"]
 debug_refcell = []
+checked = ["debug_refcell"]
