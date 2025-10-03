@@ -1,4 +1,4 @@
-# `unchecked_refcell`
+# `unchecked-refcell`
 
 `UncheckedRefCell` is a drop-in alternative to `core::cell::RefCell` for **performance-critical code** where it is certain no borrowing rules are violated.
 
