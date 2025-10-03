@@ -1,6 +1,4 @@
 use core::fmt;
-#[cfg(not(feature = "debug_refcell"))]
-use std::fmt::Display;
 use std::{
     cell::{Cell, UnsafeCell},
     cmp::Ordering,
@@ -15,7 +13,7 @@ use std::{
 ///
 /// See the [module-level documentation](self) for more.
 pub struct RefCell<T: ?Sized> {
-    #[cfg(feature = "checked")]
+    #[cfg(any(feature = "checked", debug_assertions))]
     borrow: Cell<BorrowCounter>,
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
@@ -130,7 +128,7 @@ impl<T> RefCell<T> {
     pub const fn new(value: T) -> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
-            #[cfg(feature = "checked")]
+            #[cfg(any(feature = "checked", debug_assertions))]
             borrow: Cell::new(UNUSED),
             marker: PhantomData,
             #[cfg(feature = "debug_refcell")]
@@ -297,7 +295,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         match BorrowRef::new(&self.borrow) {
             Some(b) => {
                 // SAFETY: `BorrowRef` ensures that there is only immutable access
@@ -312,7 +310,7 @@ impl<T: ?Sized> RefCell<T> {
                 location: self.borrowed_at.get().unwrap(),
             }),
         }
-        #[cfg(not(feature = "checked"))]
+        #[cfg(not(any(feature = "checked", debug_assertions)))]
         {
             // SAFETY: `BorrowRef` ensures that there is only immutable access
             // to the value while borrowed.
@@ -391,7 +389,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     #[cfg_attr(feature = "debug_refcell", track_caller)]
     pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         {
             match BorrowRefMut::new(&self.borrow) {
                 Some(b) => {
@@ -417,7 +415,7 @@ impl<T: ?Sized> RefCell<T> {
                 }),
             }
         }
-        #[cfg(not(feature = "checked"))]
+        #[cfg(not(any(feature = "checked", debug_assertions)))]
         {
             let value = unsafe { NonNull::new_unchecked(self.value.get()) };
             Ok(RefMut {
@@ -501,7 +499,7 @@ impl<T: ?Sized> RefCell<T> {
     /// assert!(c.try_borrow().is_ok());
     /// ```
     pub const fn undo_leak(&mut self) -> &mut T {
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         {
             *self.borrow.get_mut() = UNUSED;
         }
@@ -537,7 +535,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[inline]
     pub const unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         {
             if !is_writing(self.borrow.get()) {
                 // SAFETY: We check that nobody is actively writing now, but it is
@@ -555,7 +553,7 @@ impl<T: ?Sized> RefCell<T> {
                 })
             }
         }
-        #[cfg(not(feature = "checked"))]
+        #[cfg(not(any(feature = "checked", debug_assertions)))]
         Ok(unsafe { &*self.value.get() })
     }
 }
@@ -748,9 +746,9 @@ pub struct Ref<'b, T: ?Sized + 'b> {
     // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
     // `NonNull` is also covariant over `T`, just like we would have with `&T`.
     value: NonNull<T>,
-    #[cfg(feature = "checked")]
+    #[cfg(any(feature = "checked", debug_assertions))]
     borrow: BorrowRef<'b>,
-    #[cfg(not(feature = "checked"))]
+    #[cfg(not(any(feature = "checked", debug_assertions)))]
     marker: PhantomData<&'b ()>,
 }
 
@@ -778,9 +776,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref {
             value: orig.value,
-            #[cfg(feature = "checked")]
+            #[cfg(any(feature = "checked", debug_assertions))]
             borrow: orig.borrow.clone(),
-            #[cfg(not(feature = "checked"))]
+            #[cfg(not(any(feature = "checked", debug_assertions)))]
             marker: PhantomData,
         }
     }
@@ -810,9 +808,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     {
         Ref {
             value: NonNull::from(f(&*orig)),
-            #[cfg(feature = "checked")]
+            #[cfg(any(feature = "checked", debug_assertions))]
             borrow: orig.borrow,
-            #[cfg(not(feature = "checked"))]
+            #[cfg(not(any(feature = "checked", debug_assertions)))]
             marker: PhantomData,
         }
     }
@@ -845,9 +843,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         match f(&*orig) {
             Some(value) => Ok(Ref {
                 value: NonNull::from(value),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
-                #[cfg(not(feature = "checked"))]
+                #[cfg(not(any(feature = "checked", debug_assertions)))]
                 marker: PhantomData,
             }),
             None => Err(orig),
@@ -891,9 +889,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         match f(&*orig) {
             Ok(value) => Ok(Ref {
                 value: NonNull::from(value),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
-                #[cfg(not(feature = "checked"))]
+                #[cfg(not(any(feature = "checked", debug_assertions)))]
                 marker: PhantomData,
             }),
             Err(e) => Err((orig, e)),
@@ -926,21 +924,21 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         F: FnOnce(&T) -> (&U, &V),
     {
         let (a, b) = f(&*orig);
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         let borrow = orig.borrow.clone();
         (
             Ref {
                 value: NonNull::from(a),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow,
-                #[cfg(not(feature = "checked"))]
+                #[cfg(not(any(feature = "checked", debug_assertions)))]
                 marker: PhantomData,
             },
             Ref {
                 value: NonNull::from(b),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
-                #[cfg(not(feature = "checked"))]
+                #[cfg(not(any(feature = "checked", debug_assertions)))]
                 marker: PhantomData,
             },
         )
@@ -975,7 +973,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         // UNUSED within the lifetime `'b`. Resetting the reference tracking state would require a
         // unique reference to the borrowed RefCell. No further mutable references can be created
         // from the original cell.
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         mem::forget(orig.borrow);
         // SAFETY: after forgetting, we can form a reference for the rest of lifetime `'b`.
         unsafe { orig.value.as_ref() }
@@ -1020,7 +1018,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         let value = NonNull::from(f(&mut *orig));
         RefMut {
             value,
-            #[cfg(feature = "checked")]
+            #[cfg(any(feature = "checked", debug_assertions))]
             borrow: orig.borrow,
             marker: PhantomData,
         }
@@ -1066,7 +1064,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         match f(&mut *orig) {
             Some(value) => Ok(RefMut {
                 value: NonNull::from(value),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
                 marker: PhantomData,
             }),
@@ -1120,7 +1118,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         match f(&mut *orig) {
             Ok(value) => Ok(RefMut {
                 value: NonNull::from(value),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
                 marker: PhantomData,
             }),
@@ -1161,19 +1159,19 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     where
         F: FnOnce(&mut T) -> (&mut U, &mut V),
     {
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         let borrow = orig.borrow.clone();
         let (a, b) = f(&mut *orig);
         (
             RefMut {
                 value: NonNull::from(a),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow,
                 marker: PhantomData,
             },
             RefMut {
                 value: NonNull::from(b),
-                #[cfg(feature = "checked")]
+                #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
                 marker: PhantomData,
             },
@@ -1208,7 +1206,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         // require a unique reference to the borrowed RefCell. No further references can be created
         // from the original cell within that lifetime, making the current borrow the only
         // reference for the remaining lifetime.
-        #[cfg(feature = "checked")]
+        #[cfg(any(feature = "checked", debug_assertions))]
         mem::forget(orig.borrow);
         // SAFETY: after forgetting, we can form a reference for the rest of lifetime `'b`.
         unsafe { orig.value.as_mut() }
@@ -1269,7 +1267,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
     // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
     value: NonNull<T>,
-    #[cfg(feature = "checked")]
+    #[cfg(any(feature = "checked", debug_assertions))]
     borrow: BorrowRefMut<'b>,
     // `NonNull` is covariant over `T`, so we need to reintroduce invariance.
     marker: PhantomData<&'b mut T>,
