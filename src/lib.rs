@@ -12,7 +12,7 @@ use std::{
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](self) for more.
-pub struct RefCell<T: ?Sized> {
+pub struct UncheckedRefCell<T: ?Sized> {
     #[cfg(any(feature = "checked", debug_assertions))]
     borrow: Cell<BorrowCounter>,
     // Stores the location of the earliest currently active borrow.
@@ -114,7 +114,7 @@ const fn is_reading(x: BorrowCounter) -> bool {
     x > UNUSED
 }
 
-impl<T> RefCell<T> {
+impl<T> UncheckedRefCell<T> {
     /// Creates a new `RefCell` containing `value`.
     ///
     /// # Examples
@@ -125,8 +125,8 @@ impl<T> RefCell<T> {
     /// let c = RefCell::new(5);
     /// ```
     #[inline]
-    pub const fn new(value: T) -> RefCell<T> {
-        RefCell {
+    pub const fn new(value: T) -> UncheckedRefCell<T> {
+        UncheckedRefCell {
             value: UnsafeCell::new(value),
             #[cfg(any(feature = "checked", debug_assertions))]
             borrow: Cell::new(UNUSED),
@@ -227,7 +227,7 @@ impl<T> RefCell<T> {
     }
 }
 
-impl<T: ?Sized> RefCell<T> {
+impl<T: ?Sized> UncheckedRefCell<T> {
     /// Immutably borrows the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
@@ -558,7 +558,7 @@ impl<T: ?Sized> RefCell<T> {
     }
 }
 
-impl<T: Default> RefCell<T> {
+impl<T: Default> UncheckedRefCell<T> {
     /// Takes the wrapped value, leaving `Default::default()` in its place.
     ///
     /// # Panics
@@ -581,16 +581,16 @@ impl<T: Default> RefCell<T> {
     }
 }
 
-unsafe impl<T: ?Sized> Send for RefCell<T> where T: Send {}
+unsafe impl<T: ?Sized> Send for UncheckedRefCell<T> where T: Send {}
 
-impl<T: Clone> Clone for RefCell<T> {
+impl<T: Clone> Clone for UncheckedRefCell<T> {
     /// # Panics
     ///
     /// Panics if the value is currently mutably borrowed.
     #[inline]
     #[track_caller]
-    fn clone(&self) -> RefCell<T> {
-        RefCell::new(self.borrow().clone())
+    fn clone(&self) -> UncheckedRefCell<T> {
+        UncheckedRefCell::new(self.borrow().clone())
     }
 
     /// # Panics
@@ -603,32 +603,32 @@ impl<T: Clone> Clone for RefCell<T> {
     }
 }
 
-impl<T: Default> Default for RefCell<T> {
+impl<T: Default> Default for UncheckedRefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
-    fn default() -> RefCell<T> {
-        RefCell::new(Default::default())
+    fn default() -> UncheckedRefCell<T> {
+        UncheckedRefCell::new(Default::default())
     }
 }
 
-impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
+impl<T: ?Sized + PartialEq> PartialEq for UncheckedRefCell<T> {
     /// # Panics
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn eq(&self, other: &RefCell<T>) -> bool {
+    fn eq(&self, other: &UncheckedRefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
     }
 }
 
-impl<T: ?Sized + Eq> Eq for RefCell<T> {}
+impl<T: ?Sized + Eq> Eq for UncheckedRefCell<T> {}
 
-impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
+impl<T: ?Sized + PartialOrd> PartialOrd for UncheckedRefCell<T> {
     /// # Panics
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn partial_cmp(&self, other: &RefCell<T>) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &UncheckedRefCell<T>) -> Option<Ordering> {
         self.borrow().partial_cmp(&*other.borrow())
     }
 
@@ -636,7 +636,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn lt(&self, other: &RefCell<T>) -> bool {
+    fn lt(&self, other: &UncheckedRefCell<T>) -> bool {
         *self.borrow() < *other.borrow()
     }
 
@@ -644,7 +644,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn le(&self, other: &RefCell<T>) -> bool {
+    fn le(&self, other: &UncheckedRefCell<T>) -> bool {
         *self.borrow() <= *other.borrow()
     }
 
@@ -652,7 +652,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn gt(&self, other: &RefCell<T>) -> bool {
+    fn gt(&self, other: &UncheckedRefCell<T>) -> bool {
         *self.borrow() > *other.borrow()
     }
 
@@ -660,25 +660,25 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn ge(&self, other: &RefCell<T>) -> bool {
+    fn ge(&self, other: &UncheckedRefCell<T>) -> bool {
         *self.borrow() >= *other.borrow()
     }
 }
 
-impl<T: ?Sized + Ord> Ord for RefCell<T> {
+impl<T: ?Sized + Ord> Ord for UncheckedRefCell<T> {
     /// # Panics
     ///
     /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
-    fn cmp(&self, other: &RefCell<T>) -> Ordering {
+    fn cmp(&self, other: &UncheckedRefCell<T>) -> Ordering {
         self.borrow().cmp(&*other.borrow())
     }
 }
 
-impl<T> From<T> for RefCell<T> {
+impl<T> From<T> for UncheckedRefCell<T> {
     /// Creates a new `RefCell<T>` containing the given value.
-    fn from(t: T) -> RefCell<T> {
-        RefCell::new(t)
+    fn from(t: T) -> UncheckedRefCell<T> {
+        UncheckedRefCell::new(t)
     }
 }
 

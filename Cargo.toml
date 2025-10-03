@@ -1,5 +1,5 @@
 [package]
-name = "refcell_unchecked"
+name = "unchecked_ref_cell"
 version = "0.1.0"
 edition = "2024"
 
