@@ -494,7 +494,6 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_leak)]
     /// use unchecked_refcell::UncheckedRefCell;
     ///
     /// let mut c = UncheckedRefCell::new(0);
@@ -871,7 +870,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_try_map)]
     /// use unchecked_refcell::{UncheckedRefCell, Ref};
     /// use std::str::{from_utf8, Utf8Error};
     ///
@@ -964,7 +962,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_leak)]
     /// use unchecked_refcell::{UncheckedRefCell, Ref};
     /// let cell = UncheckedRefCell::new(0);
     ///
@@ -1091,7 +1088,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_try_map)]
     /// use unchecked_refcell::{UncheckedRefCell, RefMut};
     /// use std::str::{from_utf8_mut, Utf8Error};
     ///
@@ -1196,7 +1192,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_leak)]
     /// use unchecked_refcell::{UncheckedRefCell, RefMut};
     /// let cell = UncheckedRefCell::new(0);
     ///
