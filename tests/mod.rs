@@ -387,3 +387,22 @@ fn refcell_format() {
 //         forget((c, d));
 //     };
 // }
+
+//************************************************************************//
+
+#[cfg(debug_assertions)]
+#[test]
+#[should_panic]
+fn panics_in_debug() {
+    let x = UncheckedRefCell::new(0);
+    let _b1 = x.borrow();
+    let _b2 = x.borrow_mut();
+}
+
+#[cfg(not(debug_assertions))]
+#[test]
+fn does_not_panics_in_release() {
+    let x = UncheckedRefCell::new(0);
+    let _b1 = x.borrow();
+    let _b2 = x.borrow_mut();
+}
