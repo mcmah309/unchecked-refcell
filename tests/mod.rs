@@ -1,5 +1,5 @@
 use std::cell::Cell;
-use unchecked_refcell::{Ref, RefMut, UncheckedRefCell};
+use unchecked_refcell::{UncheckedRef, UncheckedRefMut, UncheckedRefCell};
 
 #[test]
 fn ref_and_refmut_have_sensible_show() {
@@ -91,7 +91,7 @@ fn ref_clone_updates_flag() {
         assert!(x.try_borrow().is_ok());
         assert!(x.try_borrow_mut().is_err());
         {
-            let _b2 = Ref::clone(&b1);
+            let _b2 = UncheckedRef::clone(&b1);
             assert!(x.try_borrow().is_ok());
             assert!(x.try_borrow_mut().is_err());
         }
@@ -106,11 +106,11 @@ fn ref_clone_updates_flag() {
 fn ref_map_does_not_update_flag() {
     let x = UncheckedRefCell::new(Some(5));
     {
-        let b1: Ref<'_, Option<u32>> = x.borrow();
+        let b1: UncheckedRef<'_, Option<u32>> = x.borrow();
         assert!(x.try_borrow().is_ok());
         assert!(x.try_borrow_mut().is_err());
         {
-            let b2: Ref<'_, u32> = Ref::map(b1, |o| o.as_ref().unwrap());
+            let b2: UncheckedRef<'_, u32> = UncheckedRef::map(b1, |o| o.as_ref().unwrap());
             assert_eq!(*b2, 5);
             assert!(x.try_borrow().is_ok());
             assert!(x.try_borrow_mut().is_err());
@@ -130,7 +130,7 @@ fn ref_map_split_updates_flag() {
         assert!(x.try_borrow().is_ok());
         assert!(x.try_borrow_mut().is_err());
         {
-            let (_b2, _b3) = Ref::map_split(b1, |slc| slc.split_at(1));
+            let (_b2, _b3) = UncheckedRef::map_split(b1, |slc| slc.split_at(1));
             assert!(x.try_borrow().is_ok());
             assert!(x.try_borrow_mut().is_err());
         }
@@ -145,7 +145,7 @@ fn ref_map_split_updates_flag() {
         assert!(x.try_borrow().is_err());
         assert!(x.try_borrow_mut().is_err());
         {
-            let (_b2, _b3) = RefMut::map_split(b1, |slc| slc.split_at_mut(1));
+            let (_b2, _b3) = UncheckedRefMut::map_split(b1, |slc| slc.split_at_mut(1));
             assert!(x.try_borrow().is_err());
             assert!(x.try_borrow_mut().is_err());
             drop(_b2);
@@ -162,7 +162,7 @@ fn ref_map_split_updates_flag() {
 #[test]
 fn ref_map_split() {
     let x = UncheckedRefCell::new([1, 2]);
-    let (b1, b2) = Ref::map_split(x.borrow(), |slc| slc.split_at(1));
+    let (b1, b2) = UncheckedRef::map_split(x.borrow(), |slc| slc.split_at(1));
     assert_eq!(*b1, [1]);
     assert_eq!(*b2, [2]);
 }
@@ -171,7 +171,7 @@ fn ref_map_split() {
 fn ref_mut_map_split() {
     let x = UncheckedRefCell::new([1, 2]);
     {
-        let (mut b1, mut b2) = RefMut::map_split(x.borrow_mut(), |slc| slc.split_at_mut(1));
+        let (mut b1, mut b2) = UncheckedRefMut::map_split(x.borrow_mut(), |slc| slc.split_at_mut(1));
         assert_eq!(*b1, [1]);
         assert_eq!(*b2, [2]);
         b1[0] = 2;
@@ -184,12 +184,12 @@ fn ref_mut_map_split() {
 fn ref_map_accessor() {
     struct X(UncheckedRefCell<(u32, char)>);
     impl X {
-        fn accessor(&self) -> Ref<'_, u32> {
-            Ref::map(self.0.borrow(), |tuple| &tuple.0)
+        fn accessor(&self) -> UncheckedRef<'_, u32> {
+            UncheckedRef::map(self.0.borrow(), |tuple| &tuple.0)
         }
     }
     let x = X(UncheckedRefCell::new((7, 'z')));
-    let d: Ref<'_, u32> = x.accessor();
+    let d: UncheckedRef<'_, u32> = x.accessor();
     assert_eq!(*d, 7);
 }
 
@@ -197,13 +197,13 @@ fn ref_map_accessor() {
 fn ref_mut_map_accessor() {
     struct X(UncheckedRefCell<(u32, char)>);
     impl X {
-        fn accessor(&self) -> RefMut<'_, u32> {
-            RefMut::map(self.0.borrow_mut(), |tuple| &mut tuple.0)
+        fn accessor(&self) -> UncheckedRefMut<'_, u32> {
+            UncheckedRefMut::map(self.0.borrow_mut(), |tuple| &mut tuple.0)
         }
     }
     let x = X(UncheckedRefCell::new((7, 'z')));
     {
-        let mut d: RefMut<'_, u32> = x.accessor();
+        let mut d: UncheckedRefMut<'_, u32> = x.accessor();
         assert_eq!(*d, 7);
         *d += 1;
     }

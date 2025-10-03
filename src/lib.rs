@@ -267,7 +267,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// ```
     #[inline]
     #[track_caller]
-    pub fn borrow(&self) -> Ref<'_, T> {
+    pub fn borrow(&self) -> UncheckedRef<'_, T> {
         match self.try_borrow() {
             Ok(b) => b,
             Err(err) => panic_already_borrowed(err),
@@ -300,14 +300,14 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// }
     /// ```
     #[inline]
-    pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
+    pub fn try_borrow(&self) -> Result<UncheckedRef<'_, T>, BorrowError> {
         #[cfg(any(feature = "checked", debug_assertions))]
         match BorrowRef::new(&self.borrow) {
             Some(b) => {
                 // SAFETY: `BorrowRef` ensures that there is only immutable access
                 // to the value while borrowed.
                 let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-                Ok(Ref { value, borrow: b })
+                Ok(UncheckedRef { value, borrow: b })
             }
             None => Err(BorrowError {
                 // If a borrow occurred, then we must already have an outstanding borrow,
@@ -321,7 +321,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
             // SAFETY: `BorrowRef` ensures that there is only immutable access
             // to the value while borrowed.
             let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-            Ok(Ref {
+            Ok(UncheckedRef {
                 value,
                 marker: PhantomData,
             })
@@ -363,7 +363,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// ```
     #[inline]
     #[track_caller]
-    pub fn borrow_mut(&self) -> RefMut<'_, T> {
+    pub fn borrow_mut(&self) -> UncheckedRefMut<'_, T> {
         match self.try_borrow_mut() {
             Ok(b) => b,
             Err(err) => panic_already_mutably_borrowed(err),
@@ -394,7 +394,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// ```
     #[inline]
     #[cfg_attr(feature = "debug_refcell", track_caller)]
-    pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+    pub fn try_borrow_mut(&self) -> Result<UncheckedRefMut<'_, T>, BorrowMutError> {
         #[cfg(any(feature = "checked", debug_assertions))]
         {
             match BorrowRefMut::new(&self.borrow) {
@@ -407,7 +407,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
 
                     // SAFETY: `BorrowRefMut` guarantees unique access.
                     let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-                    Ok(RefMut {
+                    Ok(UncheckedRefMut {
                         value,
                         borrow: b,
                         marker: PhantomData,
@@ -424,7 +424,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
         #[cfg(not(any(feature = "checked", debug_assertions)))]
         {
             let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-            Ok(RefMut {
+            Ok(UncheckedRefMut {
                 value,
                 marker: PhantomData,
             })
@@ -746,7 +746,7 @@ impl Clone for BorrowRef<'_> {
 /// A wrapper type for an immutably borrowed value from a `RefCell<T>`.
 ///
 /// See the [module-level documentation](self) for more.
-pub struct Ref<'b, T: ?Sized + 'b> {
+pub struct UncheckedRef<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b T` to avoid `noalias` violations, because a
     // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
     // `NonNull` is also covariant over `T`, just like we would have with `&T`.
@@ -757,7 +757,7 @@ pub struct Ref<'b, T: ?Sized + 'b> {
     marker: PhantomData<&'b ()>,
 }
 
-impl<T: ?Sized> Deref for Ref<'_, T> {
+impl<T: ?Sized> Deref for UncheckedRef<'_, T> {
     type Target = T;
 
     #[inline]
@@ -767,7 +767,7 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
     }
 }
 
-impl<'b, T: ?Sized> Ref<'b, T> {
+impl<'b, T: ?Sized> UncheckedRef<'b, T> {
     /// Copies a `Ref`.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
@@ -778,8 +778,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// a `RefCell`.
     #[must_use]
     #[inline]
-    pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
-        Ref {
+    pub fn clone(orig: &UncheckedRef<'b, T>) -> UncheckedRef<'b, T> {
+        UncheckedRef {
             value: orig.value,
             #[cfg(any(feature = "checked", debug_assertions))]
             borrow: orig.borrow.clone(),
@@ -807,11 +807,11 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert_eq!(*b2, 5)
     /// ```
     #[inline]
-    pub fn map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Ref<'b, U>
+    pub fn map<U: ?Sized, F>(orig: UncheckedRef<'b, T>, f: F) -> UncheckedRef<'b, U>
     where
         F: FnOnce(&T) -> &U,
     {
-        Ref {
+        UncheckedRef {
             value: NonNull::from(f(&*orig)),
             #[cfg(any(feature = "checked", debug_assertions))]
             borrow: orig.borrow,
@@ -841,12 +841,12 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert_eq!(*b2.unwrap(), 2);
     /// ```
     #[inline]
-    pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Result<Ref<'b, U>, Self>
+    pub fn filter_map<U: ?Sized, F>(orig: UncheckedRef<'b, T>, f: F) -> Result<UncheckedRef<'b, U>, Self>
     where
         F: FnOnce(&T) -> Option<&U>,
     {
         match f(&*orig) {
-            Some(value) => Ok(Ref {
+            Some(value) => Ok(UncheckedRef {
                 value: NonNull::from(value),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
@@ -887,11 +887,11 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// ```
     #[inline]
     pub fn try_map<U: ?Sized, E>(
-        orig: Ref<'b, T>,
+        orig: UncheckedRef<'b, T>,
         f: impl FnOnce(&T) -> Result<&U, E>,
-    ) -> Result<Ref<'b, U>, (Self, E)> {
+    ) -> Result<UncheckedRef<'b, U>, (Self, E)> {
         match f(&*orig) {
-            Ok(value) => Ok(Ref {
+            Ok(value) => Ok(UncheckedRef {
                 value: NonNull::from(value),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
@@ -923,7 +923,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert_eq!(*end, [3, 4]);
     /// ```
     #[inline]
-    pub fn map_split<U: ?Sized, V: ?Sized, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>)
+    pub fn map_split<U: ?Sized, V: ?Sized, F>(orig: UncheckedRef<'b, T>, f: F) -> (UncheckedRef<'b, U>, UncheckedRef<'b, V>)
     where
         F: FnOnce(&T) -> (&U, &V),
     {
@@ -931,14 +931,14 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         #[cfg(any(feature = "checked", debug_assertions))]
         let borrow = orig.borrow.clone();
         (
-            Ref {
+            UncheckedRef {
                 value: NonNull::from(a),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow,
                 #[cfg(not(any(feature = "checked", debug_assertions)))]
                 marker: PhantomData,
             },
-            Ref {
+            UncheckedRef {
                 value: NonNull::from(b),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
@@ -971,7 +971,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert!(cell.try_borrow().is_ok());
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
-    pub fn leak(orig: Ref<'b, T>) -> &'b T {
+    pub fn leak(orig: UncheckedRef<'b, T>) -> &'b T {
         // By forgetting this Ref we ensure that the borrow counter in the RefCell can't go back to
         // UNUSED within the lifetime `'b`. Resetting the reference tracking state would require a
         // unique reference to the borrowed RefCell. No further mutable references can be created
@@ -983,13 +983,13 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     }
 }
 
-impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for UncheckedRef<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
 }
 
-impl<'b, T: ?Sized> RefMut<'b, T> {
+impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
     /// Makes a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
@@ -1014,12 +1014,12 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// assert_eq!(*c.borrow(), (42, 'b'));
     /// ```
     #[inline]
-    pub fn map<U: ?Sized, F>(mut orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
+    pub fn map<U: ?Sized, F>(mut orig: UncheckedRefMut<'b, T>, f: F) -> UncheckedRefMut<'b, U>
     where
         F: FnOnce(&mut T) -> &mut U,
     {
         let value = NonNull::from(f(&mut *orig));
-        RefMut {
+        UncheckedRefMut {
             value,
             #[cfg(any(feature = "checked", debug_assertions))]
             borrow: orig.borrow,
@@ -1056,7 +1056,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// assert_eq!(*c.borrow(), vec![1, 4, 3]);
     /// ```
     #[inline]
-    pub fn filter_map<U: ?Sized, F>(mut orig: RefMut<'b, T>, f: F) -> Result<RefMut<'b, U>, Self>
+    pub fn filter_map<U: ?Sized, F>(mut orig: UncheckedRefMut<'b, T>, f: F) -> Result<UncheckedRefMut<'b, U>, Self>
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
     {
@@ -1065,7 +1065,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         // inside of the function call never allowing the exclusive reference to
         // escape.
         match f(&mut *orig) {
-            Some(value) => Ok(RefMut {
+            Some(value) => Ok(UncheckedRefMut {
                 value: NonNull::from(value),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
@@ -1110,15 +1110,15 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// ```
     #[inline]
     pub fn try_map<U: ?Sized, E>(
-        mut orig: RefMut<'b, T>,
+        mut orig: UncheckedRefMut<'b, T>,
         f: impl FnOnce(&mut T) -> Result<&mut U, E>,
-    ) -> Result<RefMut<'b, U>, (Self, E)> {
+    ) -> Result<UncheckedRefMut<'b, U>, (Self, E)> {
         // SAFETY: function holds onto an exclusive reference for the duration
         // of its call through `orig`, and the pointer is only de-referenced
         // inside of the function call never allowing the exclusive reference to
         // escape.
         match f(&mut *orig) {
-            Ok(value) => Ok(RefMut {
+            Ok(value) => Ok(UncheckedRefMut {
                 value: NonNull::from(value),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
@@ -1155,9 +1155,9 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// ```
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(
-        mut orig: RefMut<'b, T>,
+        mut orig: UncheckedRefMut<'b, T>,
         f: F,
-    ) -> (RefMut<'b, U>, RefMut<'b, V>)
+    ) -> (UncheckedRefMut<'b, U>, UncheckedRefMut<'b, V>)
     where
         F: FnOnce(&mut T) -> (&mut U, &mut V),
     {
@@ -1165,13 +1165,13 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         let borrow = orig.borrow.clone();
         let (a, b) = f(&mut *orig);
         (
-            RefMut {
+            UncheckedRefMut {
                 value: NonNull::from(a),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow,
                 marker: PhantomData,
             },
-            RefMut {
+            UncheckedRefMut {
                 value: NonNull::from(b),
                 #[cfg(any(feature = "checked", debug_assertions))]
                 borrow: orig.borrow,
@@ -1201,7 +1201,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     ///
     /// assert!(cell.try_borrow_mut().is_err());
     /// ```
-    pub fn leak(mut orig: RefMut<'b, T>) -> &'b mut T {
+    pub fn leak(mut orig: UncheckedRefMut<'b, T>) -> &'b mut T {
         // By forgetting this BorrowRefMut we ensure that the borrow counter in the RefCell can't
         // go back to UNUSED within the lifetime `'b`. Resetting the reference tracking state would
         // require a unique reference to the borrowed RefCell. No further references can be created
@@ -1264,7 +1264,7 @@ impl<'b> BorrowRefMut<'b> {
 /// A wrapper type for a mutably borrowed value from a `RefCell<T>`.
 ///
 /// See the [module-level documentation](self) for more.
-pub struct RefMut<'b, T: ?Sized + 'b> {
+pub struct UncheckedRefMut<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
     // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
     value: NonNull<T>,
@@ -1274,7 +1274,7 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
     marker: PhantomData<&'b mut T>,
 }
 
-impl<T: ?Sized> Deref for RefMut<'_, T> {
+impl<T: ?Sized> Deref for UncheckedRefMut<'_, T> {
     type Target = T;
 
     #[inline]
@@ -1284,7 +1284,7 @@ impl<T: ?Sized> Deref for RefMut<'_, T> {
     }
 }
 
-impl<T: ?Sized> DerefMut for RefMut<'_, T> {
+impl<T: ?Sized> DerefMut for UncheckedRefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         // SAFETY: the value is accessible as long as we hold our borrow.
@@ -1292,7 +1292,7 @@ impl<T: ?Sized> DerefMut for RefMut<'_, T> {
     }
 }
 
-impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
+impl<T: ?Sized + fmt::Display> fmt::Display for UncheckedRefMut<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
@@ -1311,13 +1311,13 @@ impl<T: ?Sized + Debug> Debug for UncheckedRefCell<T> {
     }
 }
 
-impl<T: ?Sized + Debug> Debug for Ref<'_, T> {
+impl<T: ?Sized + Debug> Debug for UncheckedRef<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Debug::fmt(&**self, f)
     }
 }
 
-impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
+impl<T: ?Sized + Debug> Debug for UncheckedRefMut<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Debug::fmt(&*(self.deref()), f)
     }
