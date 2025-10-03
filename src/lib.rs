@@ -94,16 +94,16 @@ fn panic_already_mutably_borrowed(err: BorrowMutError) -> ! {
     panic!("RefCell already mutably borrowed: {err}")
 }
 
-// Positive values represent the number of `Ref` active. Negative values
-// represent the number of `RefMut` active. Multiple `RefMut`s can only be
+// Positive values represent the number of `UncheckedRef` active. Negative values
+// represent the number of `UncheckedRefMut` active. Multiple `UncheckedRefMut`s can only be
 // active at a time if they refer to distinct, nonoverlapping components of a
 // `RefCell` (e.g., different ranges of a slice).
 //
-// `Ref` and `RefMut` are both two words in size, and so there will likely never
-// be enough `Ref`s or `RefMut`s in existence to overflow half of the `usize`
+// `UncheckedRef` and `UncheckedRefMut` are both two words in size, and so there will likely never
+// be enough `UncheckedRef`s or `UncheckedRefMut`s in existence to overflow half of the `usize`
 // range. Thus, a `BorrowCounter` will probably never overflow or underflow.
 // However, this is not a guarantee, as a pathological program could repeatedly
-// create and then mem::forget `Ref`s or `RefMut`s. Thus, all code must
+// create and then mem::forget `UncheckedRef`s or `UncheckedRefMut`s. Thus, all code must
 // explicitly check for overflow and underflow in order to avoid unsafety, or at
 // least behave correctly in the event that overflow or underflow happens (e.g.,
 // see BorrowRef::new).
@@ -236,7 +236,7 @@ impl<T> UncheckedRefCell<T> {
 impl<T: ?Sized> UncheckedRefCell<T> {
     /// Immutably borrows the wrapped value.
     ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple
+    /// The borrow lasts until the returned `UncheckedRef` exits scope. Multiple
     /// immutable borrows can be taken out at the same time.
     ///
     /// # Panics
@@ -277,7 +277,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// Immutably borrows the wrapped value, returning an error if the value is currently mutably
     /// borrowed.
     ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
+    /// The borrow lasts until the returned `UncheckedRef` exits scope. Multiple immutable borrows can be
     /// taken out at the same time.
     ///
     /// This is the non-panicking variant of [`borrow`](#method.borrow).
@@ -330,7 +330,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts until the returned `RefMut` or all `RefMut`s derived
+    /// The borrow lasts until the returned `UncheckedRefMut` or all `UncheckedRefMut`s derived
     /// from it exit scope. The value cannot be borrowed while this borrow is
     /// active.
     ///
@@ -372,7 +372,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
 
     /// Mutably borrows the wrapped value, returning an error if the value is currently borrowed.
     ///
-    /// The borrow lasts until the returned `RefMut` or all `RefMut`s derived
+    /// The borrow lasts until the returned `UncheckedRefMut` or all `UncheckedRefMut`s derived
     /// from it exit scope. The value cannot be borrowed while this borrow is
     /// active.
     ///
@@ -453,7 +453,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// that no borrows to the underlying data exist. The dynamic checks inherent
     /// in [`borrow_mut`] and most other methods of `RefCell` are therefore
     /// unnecessary. Note that this method does not reset the borrowing state if borrows were previously leaked
-    /// (e.g., via [`forget()`] on a [`Ref`] or [`RefMut`]). For that purpose,
+    /// (e.g., via [`forget()`] on a [`UncheckedRef`] or [`UncheckedRefMut`]). For that purpose,
     /// consider using the unstable [`undo_leak`] method.
     ///
     /// This method can only be called if `RefCell` can be mutably borrowed,
@@ -487,7 +487,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     ///
     /// This call is similar to [`get_mut`] but more specialized. It borrows `RefCell` mutably to
     /// ensure no borrows exist and then resets the state tracking shared borrows. This is relevant
-    /// if some `Ref` or `RefMut` borrows have been leaked.
+    /// if some `UncheckedRef` or `UncheckedRefMut` borrows have been leaked.
     ///
     /// [`get_mut`]: UncheckedRefCell::get_mut()
     ///
@@ -517,7 +517,7 @@ impl<T: ?Sized> UncheckedRefCell<T> {
     /// # Safety
     ///
     /// Unlike `RefCell::borrow`, this method is unsafe because it does not
-    /// return a `Ref`, thus leaving the borrow flag untouched. Mutably
+    /// return a `UncheckedRef`, thus leaving the borrow flag untouched. Mutably
     /// borrowing the `RefCell` while the reference returned by this method
     /// is alive is undefined behavior.
     ///
@@ -703,7 +703,7 @@ impl<'b> BorrowRef<'b> {
             //    into isize::MIN (the max amount of writing borrows) so we can't allow
             //    an additional read borrow because isize can't represent so many read borrows
             //    (this can only happen if you mem::forget more than a small constant amount of
-            //    `Ref`s, which is not good practice)
+            //    `UncheckedRef`s, which is not good practice)
             None
         } else {
             // Incrementing borrow can result in a reading value (> 0) in these cases:
@@ -748,7 +748,7 @@ impl Clone for BorrowRef<'_> {
 /// See the [module-level documentation](self) for more.
 pub struct UncheckedRef<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b T` to avoid `noalias` violations, because a
-    // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
+    // `UncheckedRef` argument doesn't hold immutability for its whole scope, only until it drops.
     // `NonNull` is also covariant over `T`, just like we would have with `&T`.
     value: NonNull<T>,
     #[cfg(any(feature = "checked", debug_assertions))]
@@ -768,12 +768,12 @@ impl<T: ?Sized> Deref for UncheckedRef<'_, T> {
 }
 
 impl<'b, T: ?Sized> UncheckedRef<'b, T> {
-    /// Copies a `Ref`.
+    /// Copies a `UncheckedRef`.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `Ref::clone(...)`. A `Clone` implementation or a method would interfere
+    /// `UncheckedRef::clone(...)`. A `Clone` implementation or a method would interfere
     /// with the widespread use of `r.borrow().clone()` to clone the contents of
     /// a `RefCell`.
     #[must_use]
@@ -788,22 +788,22 @@ impl<'b, T: ?Sized> UncheckedRef<'b, T> {
         }
     }
 
-    /// Makes a new `Ref` for a component of the borrowed data.
+    /// Makes a new `UncheckedRef` for a component of the borrowed data.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
-    /// This is an associated function that needs to be used as `Ref::map(...)`.
+    /// This is an associated function that needs to be used as `UncheckedRef::map(...)`.
     /// A method would interfere with methods of the same name on the contents
     /// of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRef};
     ///
     /// let c = UncheckedRefCell::new((5, 'b'));
-    /// let b1: Ref<'_, (u32, char)> = c.borrow();
-    /// let b2: Ref<'_, u32> = Ref::map(b1, |t| &t.0);
+    /// let b1: UncheckedRef<'_, (u32, char)> = c.borrow();
+    /// let b2: UncheckedRef<'_, u32> = UncheckedRef::map(b1, |t| &t.0);
     /// assert_eq!(*b2, 5)
     /// ```
     #[inline]
@@ -820,24 +820,24 @@ impl<'b, T: ?Sized> UncheckedRef<'b, T> {
         }
     }
 
-    /// Makes a new `Ref` for an optional component of the borrowed data. The
+    /// Makes a new `UncheckedRef` for an optional component of the borrowed data. The
     /// original guard is returned as an `Err(..)` if the closure returns
     /// `None`.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `Ref::filter_map(...)`. A method would interfere with methods of the same
+    /// `UncheckedRef::filter_map(...)`. A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRef};
     ///
     /// let c = UncheckedRefCell::new(vec![1, 2, 3]);
-    /// let b1: Ref<'_, Vec<u32>> = c.borrow();
-    /// let b2: Result<Ref<'_, u32>, _> = Ref::filter_map(b1, |v| v.get(1));
+    /// let b1: UncheckedRef<'_, Vec<u32>> = c.borrow();
+    /// let b2: Result<UncheckedRef<'_, u32>, _> = UncheckedRef::filter_map(b1, |v| v.get(1));
     /// assert_eq!(*b2.unwrap(), 2);
     /// ```
     #[inline]
@@ -857,30 +857,30 @@ impl<'b, T: ?Sized> UncheckedRef<'b, T> {
         }
     }
 
-    /// Tries to makes a new `Ref` for a component of the borrowed data.
+    /// Tries to makes a new `UncheckedRef` for a component of the borrowed data.
     /// On failure, the original guard is returned alongside with the error
     /// returned by the closure.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `Ref::try_map(...)`. A method would interfere with methods of the same
+    /// `UncheckedRef::try_map(...)`. A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRef};
     /// use std::str::{from_utf8, Utf8Error};
     ///
     /// let c = UncheckedRefCell::new(vec![0xF0, 0x9F, 0xA6 ,0x80]);
-    /// let b1: Ref<'_, Vec<u8>> = c.borrow();
-    /// let b2: Result<Ref<'_, str>, _> = Ref::try_map(b1, |v| from_utf8(v));
+    /// let b1: UncheckedRef<'_, Vec<u8>> = c.borrow();
+    /// let b2: Result<UncheckedRef<'_, str>, _> = UncheckedRef::try_map(b1, |v| from_utf8(v));
     /// assert_eq!(&*b2.unwrap(), "🦀");
     ///
     /// let c = UncheckedRefCell::new(vec![0xF0, 0x9F, 0xA6]);
-    /// let b1: Ref<'_, Vec<u8>> = c.borrow();
-    /// let b2: Result<_, (Ref<'_, Vec<u8>>, Utf8Error)> = Ref::try_map(b1, |v| from_utf8(v));
+    /// let b1: UncheckedRef<'_, Vec<u8>> = c.borrow();
+    /// let b2: Result<_, (UncheckedRef<'_, Vec<u8>>, Utf8Error)> = UncheckedRef::try_map(b1, |v| from_utf8(v));
     /// let (b3, e) = b2.unwrap_err();
     /// assert_eq!(*b3, vec![0xF0, 0x9F, 0xA6]);
     /// assert_eq!(e.valid_up_to(), 0);
@@ -902,23 +902,23 @@ impl<'b, T: ?Sized> UncheckedRef<'b, T> {
         }
     }
 
-    /// Splits a `Ref` into multiple `Ref`s for different components of the
+    /// Splits a `UncheckedRef` into multiple `UncheckedRef`s for different components of the
     /// borrowed data.
     ///
     /// The `RefCell` is already immutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `Ref::map_split(...)`. A method would interfere with methods of the same
+    /// `UncheckedRef::map_split(...)`. A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRef};
     ///
     /// let cell = UncheckedRefCell::new([1, 2, 3, 4]);
     /// let borrow = cell.borrow();
-    /// let (begin, end) = Ref::map_split(borrow, |slice| slice.split_at(2));
+    /// let (begin, end) = UncheckedRef::map_split(borrow, |slice| slice.split_at(2));
     /// assert_eq!(*begin, [1, 2]);
     /// assert_eq!(*end, [3, 4]);
     /// ```
@@ -956,16 +956,16 @@ impl<'b, T: ?Sized> UncheckedRef<'b, T> {
     /// have occurred in total.
     ///
     /// This is an associated function that needs to be used as
-    /// `Ref::leak(...)`. A method would interfere with methods of the
+    /// `UncheckedRef::leak(...)`. A method would interfere with methods of the
     /// same name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, Ref};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRef};
     /// let cell = UncheckedRefCell::new(0);
     ///
-    /// let value = Ref::leak(cell.borrow());
+    /// let value = UncheckedRef::leak(cell.borrow());
     /// assert_eq!(*value, 0);
     ///
     /// assert!(cell.try_borrow().is_ok());
@@ -990,24 +990,24 @@ impl<T: ?Sized + fmt::Display> fmt::Display for UncheckedRef<'_, T> {
 }
 
 impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
-    /// Makes a new `RefMut` for a component of the borrowed data, e.g., an enum
+    /// Makes a new `UncheckedRefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `RefMut::map(...)`. A method would interfere with methods of the same
+    /// `UncheckedRefMut::map(...)`. A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRefMut};
     ///
     /// let c = UncheckedRefCell::new((5, 'b'));
     /// {
-    ///     let b1: RefMut<'_, (u32, char)> = c.borrow_mut();
-    ///     let mut b2: RefMut<'_, u32> = RefMut::map(b1, |t| &mut t.0);
+    ///     let b1: UncheckedRefMut<'_, (u32, char)> = c.borrow_mut();
+    ///     let mut b2: UncheckedRefMut<'_, u32> = UncheckedRefMut::map(b1, |t| &mut t.0);
     ///     assert_eq!(*b2, 5);
     ///     *b2 = 42;
     /// }
@@ -1027,26 +1027,26 @@ impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
         }
     }
 
-    /// Makes a new `RefMut` for an optional component of the borrowed data. The
+    /// Makes a new `UncheckedRefMut` for an optional component of the borrowed data. The
     /// original guard is returned as an `Err(..)` if the closure returns
     /// `None`.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `RefMut::filter_map(...)`. A method would interfere with methods of the
+    /// `UncheckedRefMut::filter_map(...)`. A method would interfere with methods of the
     /// same name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRefMut};
     ///
     /// let c = UncheckedRefCell::new(vec![1, 2, 3]);
     ///
     /// {
-    ///     let b1: RefMut<'_, Vec<u32>> = c.borrow_mut();
-    ///     let mut b2: Result<RefMut<'_, u32>, _> = RefMut::filter_map(b1, |v| v.get_mut(1));
+    ///     let b1: UncheckedRefMut<'_, Vec<u32>> = c.borrow_mut();
+    ///     let mut b2: Result<UncheckedRefMut<'_, u32>, _> = UncheckedRefMut::filter_map(b1, |v| v.get_mut(1));
     ///
     ///     if let Ok(mut b2) = b2 {
     ///         *b2 += 2;
@@ -1075,26 +1075,26 @@ impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
         }
     }
 
-    /// Tries to makes a new `RefMut` for a component of the borrowed data.
+    /// Tries to makes a new `UncheckedRefMut` for a component of the borrowed data.
     /// On failure, the original guard is returned alongside with the error
     /// returned by the closure.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `RefMut::try_map(...)`. A method would interfere with methods of the same
+    /// `UncheckedRefMut::try_map(...)`. A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRefMut};
     /// use std::str::{from_utf8_mut, Utf8Error};
     ///
     /// let c = UncheckedRefCell::new(vec![0x68, 0x65, 0x6C, 0x6C, 0x6F]);
     /// {
-    ///     let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
-    ///     let b2: Result<RefMut<'_, str>, _> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    ///     let b1: UncheckedRefMut<'_, Vec<u8>> = c.borrow_mut();
+    ///     let b2: Result<UncheckedRefMut<'_, str>, _> = UncheckedRefMut::try_map(b1, |v| from_utf8_mut(v));
     ///     let mut b2 = b2.unwrap();
     ///     assert_eq!(&*b2, "hello");
     ///     b2.make_ascii_uppercase();
@@ -1102,8 +1102,8 @@ impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
     /// assert_eq!(*c.borrow(), "HELLO".as_bytes());
     ///
     /// let c = UncheckedRefCell::new(vec![0xFF]);
-    /// let b1: RefMut<'_, Vec<u8>> = c.borrow_mut();
-    /// let b2: Result<_, (RefMut<'_, Vec<u8>>, Utf8Error)> = RefMut::try_map(b1, |v| from_utf8_mut(v));
+    /// let b1: UncheckedRefMut<'_, Vec<u8>> = c.borrow_mut();
+    /// let b2: Result<_, (UncheckedRefMut<'_, Vec<u8>>, Utf8Error)> = UncheckedRefMut::try_map(b1, |v| from_utf8_mut(v));
     /// let (b3, e) = b2.unwrap_err();
     /// assert_eq!(*b3, vec![0xFF]);
     /// assert_eq!(e.valid_up_to(), 0);
@@ -1128,26 +1128,26 @@ impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
         }
     }
 
-    /// Splits a `RefMut` into multiple `RefMut`s for different components of the
+    /// Splits a `UncheckedRefMut` into multiple `UncheckedRefMut`s for different components of the
     /// borrowed data.
     ///
     /// The underlying `RefCell` will remain mutably borrowed until both
-    /// returned `RefMut`s go out of scope.
+    /// returned `UncheckedRefMut`s go out of scope.
     ///
     /// The `RefCell` is already mutably borrowed, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `RefMut::map_split(...)`. A method would interfere with methods of the
+    /// `UncheckedRefMut::map_split(...)`. A method would interfere with methods of the
     /// same name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRefMut};
     ///
     /// let cell = UncheckedRefCell::new([1, 2, 3, 4]);
     /// let borrow = cell.borrow_mut();
-    /// let (mut begin, mut end) = RefMut::map_split(borrow, |slice| slice.split_at_mut(2));
+    /// let (mut begin, mut end) = UncheckedRefMut::map_split(borrow, |slice| slice.split_at_mut(2));
     /// assert_eq!(*begin, [1, 2]);
     /// assert_eq!(*end, [3, 4]);
     /// begin.copy_from_slice(&[4, 3]);
@@ -1186,16 +1186,16 @@ impl<'b, T: ?Sized> UncheckedRefMut<'b, T> {
     /// mutably borrowed, making the returned reference the only to the interior.
     ///
     /// This is an associated function that needs to be used as
-    /// `RefMut::leak(...)`. A method would interfere with methods of the
+    /// `UncheckedRefMut::leak(...)`. A method would interfere with methods of the
     /// same name on the contents of a `RefCell` used through `Deref`.
     ///
     /// # Examples
     ///
     /// ```
-    /// use unchecked_refcell::{UncheckedRefCell, RefMut};
+    /// use unchecked_refcell::{UncheckedRefCell, UncheckedRefMut};
     /// let cell = UncheckedRefCell::new(0);
     ///
-    /// let value = RefMut::leak(cell.borrow_mut());
+    /// let value = UncheckedRefMut::leak(cell.borrow_mut());
     /// assert_eq!(*value, 0);
     /// *value = 1;
     ///
@@ -1266,7 +1266,7 @@ impl<'b> BorrowRefMut<'b> {
 /// See the [module-level documentation](self) for more.
 pub struct UncheckedRefMut<'b, T: ?Sized + 'b> {
     // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
-    // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
+    // `UncheckedRefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
     value: NonNull<T>,
     #[cfg(any(feature = "checked", debug_assertions))]
     borrow: BorrowRefMut<'b>,
