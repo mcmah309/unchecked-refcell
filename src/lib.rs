@@ -14,11 +14,14 @@ use core::{
 
 /// A mutable memory location with dynamically checked borrow rules.
 ///
-/// `UncheckedRefCell` behaves exactly like `std::cell::RefCell` when `debug_assertions` is enabled or `checked` feature
-/// flag is enabled (for non-release-like builds). For release-like builds, `UncheckedRefCell` does not
+/// `UncheckedRefCell` behaves exactly like `std::cell::RefCell` when `debug_assertions` is enabled (debug builds).
+/// For release-like builds, `UncheckedRefCell` does not
 /// perform any borrow checking. Thus it is faster than `RefCell` (see benchmarks), but may lead to
-/// undefined behavior instead of panicking like `RefCell`. Use this over `RefCell` for performance
+/// undefined behavior instead of panicking like `RefCell`. Only use this over `RefCell` for performance
 /// critical code where it is known a `RefCell` would never panic.
+/// 
+/// Enabling the `checked` feature flag (disabled by default) forces borrow checking in release
+/// builds too. This is only intended for use with debugging.
 pub struct UncheckedRefCell<T: ?Sized> {
     #[cfg(any(feature = "checked", debug_assertions))]
     borrow: Cell<BorrowCounter>,

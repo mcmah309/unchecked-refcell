@@ -7,8 +7,9 @@
 
 `UncheckedRefCell` is a drop-in alternative to `core::cell::RefCell` for **performance-critical code** where it is certain no borrowing rules are violated.
 
-* In **debug builds** or when the `checked` feature is enabled, it behaves exactly like `RefCell`, enforcing Rust’s borrow rules.
-* In **release builds** without `checked`, all borrow checks are **skipped** for maximum performance. Use this only when you are certain borrow violations cannot occur as otherwise this may lead to **undefined behavior** if multiple mutable references exist simultaneously.
+* In **debug builds**, it behaves exactly like `RefCell`, enforcing Rust’s borrow rules.
+* In **release builds**, all borrow checks are **skipped** for maximum performance. Use this only when you are certain borrow violations cannot occur as otherwise this may lead to **undefined behavior** if multiple mutable references exist simultaneously.
+> Enabling the `checked` feature flag (disabled by default) forces borrow checking in release builds too. This is only intended for use with debugging.
 
 It provides all the same APIs as `RefCell`, including:
 `borrow`, `borrow_mut`, `try_borrow`, `try_borrow_mut`, `replace`, `replace_with`, `swap`, `get_mut`, `take`, etc.
